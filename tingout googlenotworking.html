@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tingout</title>
+    <!-- Tailwind CSS for Premium Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#8b5cf6', 600: '#7c3aed' }, // Premium Purple
+                        accent: { 500: '#10b981', 600: '#059669' }, // Success Emerald
+                        danger: { 500: '#f43f5e', 600: '#e11d48' }  // Reject Rose
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom styles for things Tailwind is too verbose for */
+        body { background-color: #09090b; color: #f4f4f5; overflow-x: hidden; touch-action: pan-y; }
+        .glass-card { background: rgba(24, 24, 27, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .swipe-card { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s; will-change: transform; }
+        .hide { display: none !important; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 1.5rem; display: flex; flex-direction: column; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- GENERIC ALERT MODAL -->
+    <div id="alertModal" class="hide fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="glass-card p-6 rounded-2xl w-full max-w-sm shadow-2xl border-brand-500/30 text-center">
+            <h2 id="alertTitle" class="text-xl font-bold mb-2">Notice</h2>
+            <p id="alertMessage" class="text-sm text-zinc-400 mb-6">Message goes here.</p>
+            <button onclick="closeAlertModal()" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 transition-colors font-bold">OK</button>
+        </div>
+    </div>
+
+    <!-- CONFIRM MODAL -->
+    <div id="confirmModal" class="hide fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="glass-card p-6 rounded-2xl w-full max-w-sm shadow-2xl border-danger-500/30 text-center">
+            <i data-lucide="alert-octagon" class="w-12 h-12 text-danger-500 mx-auto mb-4"></i>
+            <h2 class="text-xl font-bold mb-2">Cancel Party?</h2>
+            <p class="text-sm text-zinc-400 mb-6">Are you sure you want to delete this party? This cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition-colors font-bold">Nevermind</button>
+                <button onclick="executeCancelParty()" class="flex-1 py-3 rounded-xl bg-danger-600 hover:bg-danger-500 transition-colors font-bold">Yes, Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP CONTAINER -->
+    <div class="app-container relative">
+
+        <!-- 0. TUTORIAL MODAL -->
+        <div id="guideModal" class="hide fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div class="glass-card p-6 rounded-2xl w-full max-w-sm shadow-2xl border-brand-500/30">
+                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-brand-500/20 text-brand-500 mb-4 mx-auto">
+                    <i data-lucide="book-open"></i>
+                </div>
+                <h2 class="text-xl font-bold text-center mb-2">How It Works</h2>
+                <ul class="text-sm text-zinc-400 space-y-3 mb-6">
+                    <li class="flex gap-2"><i data-lucide="coins" class="w-5 h-5 text-yellow-500 shrink-0"></i> <span><strong>Economy:</strong> Everything costs coins. You start with 100.</span></li>
+                    <li class="flex gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-blue-400 shrink-0"></i> <span><strong>Pitch (-10):</strong> Suggest a spot. Don't spam.</span></li>
+                    <li class="flex gap-2"><i data-lucide="lock" class="w-5 h-5 text-accent-500 shrink-0"></i> <span><strong>Lock In (-50):</strong> Wager coins to prove you're going. Required to vote.</span></li>
+                    <li class="flex gap-2"><i data-lucide="gavel" class="w-5 h-5 text-danger-500 shrink-0"></i> <span><strong>Tribunal:</strong> If you flake after locking in, the group votes to take your wager.</span></li>
+                </ul>
+                <button onclick="closeGuide()" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 font-bold transition-colors">I Got It</button>
+            </div>
+        </div>
+
+        <!-- 1. LOGIN SCREEN -->
+        <div id="screen-login" class="flex flex-col items-center justify-center flex-1">
+            <div class="w-16 h-16 bg-gradient-to-tr from-brand-600 to-accent-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-brand-500/20">
+                <i data-lucide="flame" class="text-white w-8 h-8"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight mb-2">Tingout</h1>
+            <p class="text-zinc-400 mb-8 text-center">No more flakes. No more indecision.</p>
+            <button onclick="mockLogin()" class="flex items-center justify-center gap-3 w-full py-3.5 rounded-xl bg-white text-black font-bold hover:bg-zinc-200 transition-colors shadow-xl">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Continue with Google
+            </button>
+        </div>
+
+        <!-- 1.5 HOST OR JOIN SCREEN -->
+        <div id="screen-host-join" class="hide flex flex-col items-center justify-center flex-1 w-full max-w-sm mx-auto">
+            <h2 class="text-2xl font-bold mb-6 text-center">Choose Your Path</h2>
+            
+            <!-- Host -->
+            <div class="glass-card w-full rounded-2xl p-5 border-zinc-800 mb-6 shadow-lg shadow-brand-500/10">
+                <p class="text-sm text-zinc-400 mb-3 text-center">Set a deadline for the vote</p>
+                <input type="time" id="input-deadline" class="w-full text-center bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-500 transition-colors mb-4 text-white custom-time-input">
+                
+                <p class="text-sm text-zinc-400 mb-3 text-center mt-2">When is the actual hangout?</p>
+                <input type="datetime-local" id="input-meetup" class="w-full text-center bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-accent-500 transition-colors mb-4 text-white">
+
+                <button onclick="actionHostEvent()" class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 font-bold transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="plus-circle"></i> Host New Hangout
+                </button>
+            </div>
+
+            <div class="flex items-center w-full mb-6">
+                <div class="flex-1 border-t border-zinc-800"></div>
+                <span class="px-4 text-xs text-zinc-500 uppercase tracking-widest font-bold">OR</span>
+                <div class="flex-1 border-t border-zinc-800"></div>
+            </div>
+
+            <!-- Join -->
+            <div class="glass-card w-full rounded-2xl p-5 border-zinc-800">
+                <p class="text-sm text-zinc-400 mb-3 text-center">Got an invite code?</p>
+                <input type="text" id="input-join-code" placeholder="e.g. X7K9A2" class="w-full text-center tracking-[0.25em] uppercase font-mono bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-accent-500 transition-colors mb-3">
+                <button onclick="actionJoinEvent()" class="w-full py-3 rounded-xl bg-zinc-200 text-black font-bold hover:bg-white transition-colors">
+                    Join Party
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. MAIN DASHBOARD -->
+        <div id="screen-dashboard" class="hide flex flex-col gap-4">
+            
+            <!-- Invite Code Banner -->
+            <div class="bg-brand-500/10 border border-brand-500/30 rounded-xl p-3 flex justify-between items-center shadow-lg shadow-brand-500/5">
+                <span class="text-sm text-brand-400 font-bold flex items-center gap-2">
+                    <i data-lucide="key" class="w-4 h-4"></i> Invite Code:
+                </span>
+                <span id="ui-invite-code" class="font-mono font-black text-lg tracking-widest text-white">---</span>
+            </div>
+
+            <!-- Header Status -->
+            <div class="flex flex-col gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-zinc-400 uppercase tracking-wider font-bold">Your Balance</p>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="coins" class="w-5 h-5 text-yellow-500"></i>
+                            <span id="ui-coins" class="text-2xl font-black text-yellow-400">100</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-zinc-400 uppercase tracking-wider font-bold">Vote Deadline</p>
+                        <p id="ui-deadline" class="text-lg font-bold text-brand-400">05:00 PM</p>
+                    </div>
+                </div>
+                <div class="border-t border-zinc-800 pt-3 flex justify-between items-center">
+                    <p class="text-xs text-zinc-400 uppercase tracking-wider font-bold">Meetup Time</p>
+                    <p id="ui-meetup" class="text-sm font-bold text-accent-400">---</p>
+                </div>
+            </div>
+
+            <!-- Lock In Action -->
+            <div id="panel-lockin" class="glass-card rounded-2xl p-5 border-zinc-800 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="shield-check" class="w-16 h-16"></i></div>
+                <h3 class="font-bold text-lg mb-1">Commit to Hangout</h3>
+                <p class="text-sm text-zinc-400 mb-4">Wager 50 coins to lock in and vote.</p>
+                <button id="btn-lockin" onclick="actionLockIn()" class="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 font-bold transition-all border border-zinc-700 flex justify-center items-center gap-2">
+                    <i data-lucide="lock" class="w-4 h-4"></i> Lock In (-50 Coins)
+                </button>
+            </div>
+
+            <!-- Pitch Action -->
+            <div id="panel-pitch" class="glass-card rounded-2xl p-5 border-zinc-800">
+                <h3 class="font-bold text-lg mb-1">Pitch a Spot</h3>
+                <p class="text-sm text-zinc-400 mb-3">Where should we go?</p>
+                <div class="flex gap-2">
+                    <input type="text" id="input-pitch" placeholder="e.g. Downtown Arcade" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-500 transition-colors">
+                    <button onclick="actionPitch()" class="px-5 rounded-xl bg-zinc-200 text-black font-bold hover:bg-white transition-colors">Pitch</button>
+                </div>
+            </div>
+
+            <!-- Party Members -->
+            <div id="panel-members" class="glass-card rounded-2xl p-5 border-zinc-800 mt-2">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-lg flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-brand-400"></i> The Squad</h3>
+                    <span id="ui-members-count" class="text-xs font-bold bg-zinc-800 px-2 py-1 rounded-md text-zinc-400">0 Members</span>
+                </div>
+                <div id="ui-members-list" class="space-y-2 max-h-40 overflow-y-auto">
+                    <!-- Member items injected here -->
+                </div>
+            </div>
+
+            <!-- Enter Voting Area -->
+            <button id="btn-entervote" onclick="navToVoting()" class="mt-2 w-full py-4 rounded-xl bg-brand-600 hover:bg-brand-500 font-bold shadow-lg shadow-brand-500/20 transition-colors flex justify-center items-center gap-2 opacity-50 cursor-not-allowed disabled">
+                <i data-lucide="layers"></i> Enter Voting Arena
+            </button>
+            <p id="err-vote" class="text-xs text-center text-danger-500 hide">You must Lock In before you can vote.</p>
+
+            <!-- Cancel Party (Host Only) -->
+            <button id="btn-cancel-party" onclick="promptCancelParty()" class="hide mt-4 w-full py-4 rounded-xl bg-danger-900/30 hover:bg-danger-900/60 border border-danger-500/30 text-danger-400 font-bold transition-colors flex justify-center items-center gap-2">
+                <i data-lucide="trash-2"></i> Cancel Party
+            </button>
+        </div>
+
+        <!-- 3. SWIPE ARENA -->
+        <div id="screen-swipe" class="hide flex flex-col h-full flex-1">
+            <div class="text-center mb-6">
+                <p class="text-sm text-zinc-400 uppercase tracking-wider font-bold mb-1">Voting Arena</p>
+                <h2 class="text-2xl font-black">Swipe on Pitches</h2>
+            </div>
+
+            <div id="swipe-container" class="relative flex-1 w-full max-w-sm mx-auto perspective-1000">
+                <!-- Cards injected here -->
+            </div>
+
+            <div class="flex justify-center gap-6 mt-8 mb-4">
+                <button onclick="triggerVote('left')" class="w-16 h-16 rounded-full bg-zinc-900 border border-danger-500/50 flex items-center justify-center text-danger-500 hover:bg-danger-500/10 transition-colors shadow-lg">
+                    <i data-lucide="x" class="w-8 h-8"></i>
+                </button>
+                <button onclick="triggerVote('right')" class="w-16 h-16 rounded-full bg-zinc-900 border border-accent-500/50 flex items-center justify-center text-accent-500 hover:bg-accent-500/10 transition-colors shadow-lg">
+                    <i data-lucide="heart" class="w-8 h-8 fill-accent-500/20"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. WAITING ROOM -->
+        <div id="screen-waiting" class="hide flex flex-col items-center justify-center flex-1 text-center">
+            <div class="w-20 h-20 rounded-full border-4 border-zinc-800 border-t-brand-500 animate-spin mb-6"></div>
+            <h2 class="text-2xl font-bold mb-2">Votes Locked</h2>
+            <p class="text-zinc-400 mb-8">Waiting for the deadline to pass to reveal the winner...</p>
+            
+            <button onclick="switchScreen('screen-dashboard')" class="mb-8 px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition-colors font-bold flex items-center justify-center gap-2 w-full max-w-xs mx-auto">
+                <i data-lucide="arrow-left"></i> Back to Dashboard
+            </button>
+
+            <!-- DEV TOOL: Simulate Time passing for the prototype -->
+            <div class="bg-zinc-900/80 p-4 border border-brand-500/30 rounded-xl max-w-xs text-sm mx-auto">
+                <p class="text-brand-400 font-bold mb-2">🛠️ Dev Tool (For Testing)</p>
+                <button onclick="triggerReveal()" class="w-full py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-600 transition-colors">Fast Forward to Deadline</button>
+            </div>
+        </div>
+
+        <!-- 5. REVEAL / WINNER -->
+        <div id="screen-reveal" class="hide flex flex-col items-center justify-center flex-1 text-center">
+            <div class="inline-block p-4 bg-yellow-500/20 rounded-full mb-4">
+                <i data-lucide="trophy" class="w-12 h-12 text-yellow-500"></i>
+            </div>
+            <p class="text-zinc-400 uppercase tracking-widest text-sm font-bold mb-1">Winner Decided</p>
+            <h1 id="ui-winner-place" class="text-4xl font-black mb-2 text-white drop-shadow-lg">Loading...</h1>
+            <p id="ui-winner-user" class="text-zinc-400 mb-8">Pitched by Loading...</p>
+            
+            <button id="btn-tribunal" onclick="customAlert('Too Early', 'The Tribunal unlocks automatically after the meetup time has passed.')" class="w-full py-4 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-500 transition-colors font-bold mt-auto flex items-center justify-center gap-2 opacity-70">
+                <i data-lucide="clock"></i> Waiting for Meetup Time...
+            </button>
+
+            <!-- DEV TOOL: Simulate Meetup passing -->
+            <button onclick="enableTribunal()" class="mt-4 w-full py-2 bg-zinc-900/50 hover:bg-zinc-800 border border-brand-500/30 text-brand-400 rounded-lg transition-colors text-xs font-bold">
+                🛠️ Dev Tool: Fast Forward Meetup
+            </button>
+        </div>
+
+        <!-- 6. TRIBUNAL -->
+        <div id="screen-tribunal" class="hide flex flex-col flex-1">
+            <div class="bg-danger-500/10 border border-danger-500/30 rounded-2xl p-5 mb-6 text-center">
+                <i data-lucide="alert-triangle" class="w-8 h-8 text-danger-500 mx-auto mb-2"></i>
+                <h2 class="text-xl font-bold text-danger-400 mb-1">The Tribunal</h2>
+                <p class="text-sm text-zinc-300">Who actually showed up? Uncheck anyone who flaked. The group majority decides their fate.</p>
+            </div>
+
+            <div id="tribunal-list" class="space-y-3 mb-8">
+                <!-- Checklist injected here -->
+            </div>
+
+            <button id="btn-submit-tribunal" onclick="submitTribunal()" class="w-full py-4 rounded-xl bg-danger-600 hover:bg-danger-500 font-bold transition-colors mt-auto">
+                Submit Judgement
+            </button>
+            
+            <button id="btn-finalize-tribunal" onclick="finalizeTribunal()" class="hide mt-4 w-full py-4 rounded-xl bg-zinc-800 border border-danger-500/30 text-danger-400 font-bold transition-colors flex justify-center items-center gap-2">
+                <i data-lucide="shield-alert"></i> Host: Finalize & Punish Flakes
+            </button>
+        </div>
+
+    </div>
+
+    <!-- APP LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- FIREBASE SETUP ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXo3vhPMezM60RJee7zeH67uL9quB-P00",
+            authDomain: "tingout.firebaseapp.com",
+            projectId: "tingout",
+            storageBucket: "tingout.firebasestorage.app",
+            messagingSenderId: "1051512992445",
+            appId: "1:1051512992445:web:34d6aa61700c33297c3dd4",
+            measurementId: "G-N407SQ8D65"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rootPathId = 'tingout-prod'; // Safe namespace for Canvas and real DB
+
+        // --- GLOBAL STATE ---
+        let currentUser = null;
+        let userCoins = 0;
+        let currentEventCode = null;
+        let localEventState = null;
+        let eventDocUnsubscribe = null;
+        let deadlineTimer = null;
+
+        // Swiping State
+        window.currentSwipeIndex = 0;
+        window.voteBuffer = {};
+
+        // --- CUSTOM MODALS & UTILS ---
+        window.customAlert = function(title, message) {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+            document.getElementById('alertModal').classList.remove('hide');
+        }
+        window.closeAlertModal = () => document.getElementById('alertModal').classList.add('hide');
+        window.promptCancelParty = () => document.getElementById('confirmModal').classList.remove('hide');
+        window.closeConfirmModal = () => document.getElementById('confirmModal').classList.add('hide');
+        
+        window.formatTime = function(time24) {
+            let [hours, minutes] = time24.split(':');
+            hours = parseInt(hours);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+
+        window.formatDateTime = function(datetimeStr) {
+            if (!datetimeStr) return "---";
+            const date = new Date(datetimeStr);
+            const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+            return date.toLocaleDateString('en-US', opts);
+        }
+
+        window.switchScreen = function(screenId) {
+            document.querySelectorAll('[id^="screen-"]').forEach(s => s.classList.add('hide'));
+            document.getElementById(screenId).classList.remove('hide');
+        }
+        window.closeGuide = () => document.getElementById('guideModal').classList.add('hide');
+
+
+        // --- AUTH & INITIALIZATION ---
+        window.mockLogin = async function() {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Login failed", error);
+                customAlert("Login Failed", "Could not connect to Google Auth.");
+            }
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                
+                // Initialize user profile & coins
+                const profileRef = doc(db, 'artifacts', rootPathId, 'users', user.uid, 'profile', 'data');
+                const profileSnap = await getDoc(profileRef);
+                
+                if (!profileSnap.exists()) {
+                    await setDoc(profileRef, { coins: 100, name: user.displayName || 'Anonymous' });
+                }
+
+                onSnapshot(profileRef, (doc) => {
+                    if (doc.exists()) {
+                        userCoins = doc.data().coins;
+                        document.getElementById('ui-coins').innerText = userCoins;
+                    }
+                });
+
+                window.switchScreen('screen-host-join');
+                document.getElementById('guideModal').classList.remove('hide');
+            }
+        });
+
+
+        // --- PARTY CREATION & JOINING ---
+        window.actionHostEvent = async function() {
+            const deadline = document.getElementById('input-deadline').value;
+            const meetup = document.getElementById('input-meetup').value;
+
+            if (!deadline || !meetup) return customAlert("Missing Info", "Please set both times.");
+
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', code);
+            
+            await setDoc(eventRef, {
+                hostId: currentUser.uid,
+                code: code,
+                deadline: deadline,
+                meetup: meetup,
+                status: 'PITCHING',
+                members: {
+                    [currentUser.uid]: { name: currentUser.displayName || 'Host', isLockedIn: false, hasVoted: false }
+                },
+                pitches: {},
+                tribunalVotes: {},
+                tribunalSubmissions: []
+            });
+
+            currentEventCode = code;
+            listenToEvent(code);
+            window.switchScreen('screen-dashboard');
+        }
+
+        window.actionJoinEvent = async function() {
+            const code = document.getElementById('input-join-code').value.trim().toUpperCase();
+            if (!code || code.length < 3) return customAlert("Error", "Enter a valid invite code.");
+            
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', code);
+            const eventSnap = await getDoc(eventRef);
+            
+            if (!eventSnap.exists()) return customAlert("Not Found", "Party does not exist.");
+
+            await updateDoc(eventRef, {
+                [`members.${currentUser.uid}`]: { name: currentUser.displayName || 'Friend', isLockedIn: false, hasVoted: false }
+            });
+
+            currentEventCode = code;
+            listenToEvent(code);
+            window.switchScreen('screen-dashboard');
+        }
+
+        window.executeCancelParty = async function() {
+            window.closeConfirmModal();
+            if(deadlineTimer) clearInterval(deadlineTimer);
+            if(eventDocUnsubscribe) eventDocUnsubscribe();
+            
+            // Clean up UI and reset
+            currentEventCode = null;
+            localEventState = null;
+            window.switchScreen('screen-host-join');
+        }
+
+
+        // --- REAL-TIME EVENT ENGINE ---
+        function listenToEvent(code) {
+            if (eventDocUnsubscribe) eventDocUnsubscribe();
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', code);
+            
+            eventDocUnsubscribe = onSnapshot(eventRef, (snapshot) => {
+                if (!snapshot.exists()) return;
+                localEventState = snapshot.data();
+                
+                // If event was finished by Host
+                if (localEventState.status === 'COMPLETED') {
+                    customAlert("Event Over", "The host has finalized the wagers and ended the party!");
+                    window.executeCancelParty();
+                    return;
+                }
+
+                updateDashboardUI();
+            });
+            
+            startDeadlineCheck();
+        }
+
+        function updateDashboardUI() {
+            if (!localEventState) return;
+
+            document.getElementById('ui-invite-code').innerText = localEventState.code;
+            document.getElementById('ui-deadline').innerText = window.formatTime(localEventState.deadline);
+            document.getElementById('ui-meetup').innerText = window.formatDateTime(localEventState.meetup);
+
+            // Handle Host UI
+            if (localEventState.hostId === currentUser.uid) {
+                document.getElementById('btn-cancel-party').classList.remove('hide');
+                if (localEventState.status === 'TRIBUNAL') {
+                    document.getElementById('btn-finalize-tribunal').classList.remove('hide');
+                }
+            }
+
+            // Sync User's Lock-in State
+            const myMemberState = localEventState.members[currentUser.uid];
+            const btnLock = document.getElementById('btn-lockin');
+            const btnVote = document.getElementById('btn-entervote');
+
+            if (myMemberState?.isLockedIn) {
+                btnLock.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Locked In!';
+                btnLock.className = "w-full py-3 rounded-xl bg-accent-600 font-bold flex justify-center items-center gap-2 cursor-default";
+                btnLock.onclick = null;
+
+                btnVote.classList.remove('opacity-50', 'cursor-not-allowed', 'disabled');
+                document.getElementById('err-vote').classList.add('hide');
+                
+                if (myMemberState.hasVoted) {
+                    btnVote.innerHTML = '<i data-lucide="clock"></i> View Waiting Room';
+                } else {
+                    btnVote.innerHTML = '<i data-lucide="layers"></i> Enter Voting Arena';
+                }
+            }
+
+            // Render Members List
+            const list = document.getElementById('ui-members-list');
+            list.innerHTML = '';
+            const membersArray = Object.values(localEventState.members || {});
+            document.getElementById('ui-members-count').innerText = `${membersArray.length} Members`;
+
+            membersArray.forEach(member => {
+                const isReady = member.isLockedIn;
+                const statusIcon = isReady ? '<i data-lucide="lock" class="w-4 h-4 text-accent-500"></i>' : '<i data-lucide="unlock" class="w-4 h-4 text-zinc-600"></i>';
+                const statusColor = isReady ? 'text-accent-400' : 'text-zinc-500';
+                
+                list.innerHTML += `
+                    <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
+                        <span class="font-bold text-sm text-white">${member.name}</span>
+                        <div class="flex items-center gap-1 ${statusColor} text-[10px] uppercase tracking-wider font-bold">
+                            ${statusIcon} ${isReady ? 'Locked In' : 'Pending'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Handle Phase Changes (REVEAL)
+            if (localEventState.status === 'REVEAL' || localEventState.status === 'TRIBUNAL') {
+                const pitchesArray = Object.values(localEventState.pitches || {});
+                if (pitchesArray.length > 0) {
+                    const maxVotes = Math.max(...pitchesArray.map(p => p.votes));
+                    const winners = pitchesArray.filter(p => p.votes === maxVotes);
+                    const finalWinner = winners[0]; // Simplified tie breaker
+                    document.getElementById('ui-winner-place').innerText = finalWinner.place;
+                    document.getElementById('ui-winner-user').innerText = `Pitched by ${finalWinner.user}`;
+                }
+
+                // If they are not swiping, pull them to the reveal screen
+                if (!document.getElementById('screen-dashboard').classList.contains('hide') || 
+                    !document.getElementById('screen-waiting').classList.contains('hide')) {
+                    window.switchScreen('screen-reveal');
+                }
+            }
+
+            lucide.createIcons();
+        }
+
+        // --- DASHBOARD ACTIONS ---
+        window.actionLockIn = async function() {
+            if (userCoins < 50) return customAlert("Broke!", "Not enough coins to wager!");
+
+            const profileRef = doc(db, 'artifacts', rootPathId, 'users', currentUser.uid, 'profile', 'data');
+            await updateDoc(profileRef, { coins: increment(-50) });
+
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+            await updateDoc(eventRef, {
+                [`members.${currentUser.uid}.isLockedIn`]: true
+            });
+        }
+
+        window.actionPitch = async function() {
+            const input = document.getElementById('input-pitch');
+            const place = input.value.trim();
+            if (!place) return;
+            if (userCoins < 10) return customAlert("Broke!", "You need 10 coins to pitch.");
+
+            const profileRef = doc(db, 'artifacts', rootPathId, 'users', currentUser.uid, 'profile', 'data');
+            await updateDoc(profileRef, { coins: increment(-10) });
+
+            const pitchId = 'p_' + Date.now();
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+            await updateDoc(eventRef, {
+                [`pitches.${pitchId}`]: { user: currentUser.displayName || 'Friend', place: place, votes: 0, id: pitchId }
+            });
+            
+            input.value = '';
+            customAlert("Success", `"${place}" added to the voting pool!`);
+        }
+
+        // --- TIMERS ---
+        function startDeadlineCheck() {
+            if(deadlineTimer) clearInterval(deadlineTimer);
+            deadlineTimer = setInterval(() => {
+                if(!localEventState) return;
+                const now = new Date();
+
+                // Check Vote Deadline
+                if(localEventState.status === 'PITCHING' || localEventState.status === 'VOTING') {
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mm = String(now.getMinutes()).padStart(2, '0');
+                    const currentTime = `${hh}:${mm}`;
+                    
+                    if (currentTime >= localEventState.deadline) {
+                        window.triggerReveal();
+                    }
+                }
+
+                // Check Meetup Time for Tribunal
+                if (localEventState.status === 'REVEAL' && localEventState.meetup) {
+                    const meetupDate = new Date(localEventState.meetup);
+                    if (now >= meetupDate) window.enableTribunal();
+                }
+            }, 5000);
+        }
+
+
+        // --- SWIPING ENGINE ---
+        window.navToVoting = function() {
+            const myState = localEventState.members[currentUser.uid];
+            if (!myState?.isLockedIn) {
+                document.getElementById('err-vote').classList.remove('hide');
+                return;
+            }
+            if (myState.hasVoted) {
+                window.switchScreen('screen-waiting');
+                return;
+            }
+            
+            window.currentSwipeIndex = 0;
+            window.voteBuffer = {};
+            window.switchScreen('screen-swipe');
+            renderSwipeCard();
+        }
+
+        function renderSwipeCard() {
+            const container = document.getElementById('swipe-container');
+            container.innerHTML = ''; 
+
+            const pitchesArray = Object.values(localEventState.pitches || {});
+            if (window.currentSwipeIndex >= pitchesArray.length) {
+                submitVotes();
+                return;
+            }
+
+            const pitch = pitchesArray[window.currentSwipeIndex];
+            const card = document.createElement('div');
+            card.className = 'swipe-card absolute inset-0 w-full h-80 bg-zinc-800 rounded-3xl border border-zinc-700 flex flex-col items-center justify-center p-6 text-center shadow-2xl z-10 touch-none';
+            card.id = 'active-card';
+            
+            card.innerHTML = `
+                <div class="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border border-zinc-700">
+                    <i data-lucide="map-pin" class="w-8 h-8 text-brand-400"></i>
+                </div>
+                <h2 class="text-3xl font-black mb-2">${pitch.place}</h2>
+                <p class="text-zinc-400">Pitched by <span class="text-zinc-200 font-bold">${pitch.user}</span></p>
+            `;
+            
+            container.appendChild(card);
+            lucide.createIcons();
+            setupTouchDrag(card);
+        }
+
+        function setupTouchDrag(element) {
+            let startX = 0, currentX = 0;
+            element.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
+            element.addEventListener('touchmove', e => {
+                currentX = e.touches[0].clientX - startX;
+                const rotate = currentX * 0.05;
+                element.style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
+            });
+            element.addEventListener('touchend', () => {
+                if (currentX > 100) window.triggerVote('right');
+                else if (currentX < -100) window.triggerVote('left');
+                else element.style.transform = 'translateX(0) rotate(0)';
+            });
+        }
+
+        window.triggerVote = function(direction) {
+            const card = document.getElementById('active-card');
+            if (!card) return;
+
+            const pitchesArray = Object.values(localEventState.pitches || {});
+            if (direction === 'right') {
+                const pitchId = pitchesArray[window.currentSwipeIndex].id;
+                window.voteBuffer[pitchId] = true;
+            }
+
+            const moveX = direction === 'right' ? '150%' : '-150%';
+            const rotate = direction === 'right' ? '15deg' : '-15deg';
+            card.style.transform = `translateX(${moveX}) rotate(${rotate})`;
+            card.style.opacity = '0';
+
+            setTimeout(() => {
+                window.currentSwipeIndex++;
+                renderSwipeCard();
+            }, 300);
+        }
+
+        async function submitVotes() {
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+            let updates = { [`members.${currentUser.uid}.hasVoted`]: true };
+            
+            for (const pitchId in window.voteBuffer) {
+                updates[`pitches.${pitchId}.votes`] = increment(1);
+            }
+            
+            await updateDoc(eventRef, updates);
+            window.switchScreen('screen-waiting');
+        }
+
+
+        // --- RESOLUTION & TRIBUNAL ---
+        window.triggerReveal = async function() {
+            if (localEventState.status === 'PITCHING' || localEventState.status === 'VOTING') {
+                const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+                await updateDoc(eventRef, { status: 'REVEAL' });
+            }
+        }
+
+        window.enableTribunal = function() {
+            const btn = document.getElementById('btn-tribunal');
+            btn.onclick = window.navToTribunal;
+            btn.className = "w-full py-4 rounded-xl bg-danger-600 hover:bg-danger-500 transition-colors font-bold mt-auto flex items-center justify-center gap-2";
+            btn.innerHTML = `<i data-lucide="gavel"></i> Open Post-Event Tribunal`;
+            lucide.createIcons();
+        }
+
+        window.navToTribunal = function() {
+            const list = document.getElementById('tribunal-list');
+            list.innerHTML = '';
+            
+            const members = localEventState.members || {};
+            for (const [uid, member] of Object.entries(members)) {
+                if (member.isLockedIn && uid !== currentUser.uid) { // Don't vote on yourself
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                            <span class="font-bold text-lg">${member.name}</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked class="sr-only peer flake-check" data-uid="${uid}">
+                                <div class="w-11 h-6 bg-danger-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-600"></div>
+                            </label>
+                        </div>
+                    `;
+                }
+            }
+            window.switchScreen('screen-tribunal');
+        }
+
+        window.submitTribunal = async function() {
+            const checkboxes = document.querySelectorAll('.flake-check');
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+            
+            let updates = { tribunalSubmissions: arrayUnion(currentUser.uid) };
+
+            checkboxes.forEach(cb => {
+                if (!cb.checked) { // Unchecked means they FLAKED
+                    const targetUid = cb.dataset.uid;
+                    updates[`tribunalVotes.${targetUid}`] = increment(1);
+                }
+            });
+
+            await updateDoc(eventRef, updates);
+            
+            const btn = document.getElementById('btn-submit-tribunal');
+            btn.innerText = 'Judgement Submitted';
+            btn.classList.add('opacity-50', 'pointer-events-none');
+            
+            if (localEventState.hostId !== currentUser.uid) {
+                setTimeout(() => window.switchScreen('screen-dashboard'), 1500);
+            }
+        }
+
+        window.finalizeTribunal = async function() {
+            const tv = localEventState.tribunalVotes || {};
+            let maxFlakes = -1;
+            let worstFlakeUid = null;
+            
+            // Find who got the most flake votes
+            for (const [uid, count] of Object.entries(tv)) {
+                if (count > maxFlakes) {
+                    maxFlakes = count;
+                    worstFlakeUid = uid;
+                }
+            }
+
+            // Execute Coin Logic
+            const members = localEventState.members || {};
+            for (const [uid, data] of Object.entries(members)) {
+                if (data.isLockedIn) {
+                    if (uid === worstFlakeUid) {
+                        // Flaked! They lost their 50 coin wager (we don't refund it).
+                        console.log(`${data.name} flaked and lost 50 coins.`);
+                    } else {
+                        // Showed up! Refund 50 + 10 bonus
+                        const profileRef = doc(db, 'artifacts', rootPathId, 'users', uid, 'profile', 'data');
+                        await updateDoc(profileRef, { coins: increment(60) });
+                    }
+                }
+            }
+
+            const eventRef = doc(db, 'artifacts', rootPathId, 'public', 'data', 'events', currentEventCode);
+            await updateDoc(eventRef, { status: 'COMPLETED' });
+        }
+
+    </script>
+</body>
+</html>
